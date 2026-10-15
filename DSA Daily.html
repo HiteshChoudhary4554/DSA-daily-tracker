@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DSA Daily</title>
+<style>
+:root{--bg:#f5f6fa;--card:#fff;--ink:#14171f;--mute:#7a8090;--line:#e3e6ee;--acc:#4f46e5;--accink:#fff;--warn:#d9480f;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#0d1016;--card:#161a23;--ink:#eceef4;--mute:#8a91a3;--line:#262c39;--acc:#8b87ff;--accink:#0d1016;--warn:#ff9b6b}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#0d1016;--card:#161a23;--ink:#eceef4;--mute:#8a91a3;--line:#262c39;--acc:#8b87ff;--accink:#0d1016;--warn:#ff9b6b}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;min-height:100vh}
+main{max-width:520px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+h1{font-size:15px;font-weight:600;margin:0;color:var(--mute);letter-spacing:.02em}
+button{font:inherit;color:inherit;cursor:pointer}
+.tr{display:flex;align-items:center;gap:10px}
+#total{height:40px;padding:0 16px;border-radius:20px;background:var(--acc);color:var(--accink);font-weight:700;font-size:16px;display:grid;place-items:center}
+#theme{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--card);font-size:18px}
+.today{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:24px}
+.date{font-size:28px;font-weight:700;letter-spacing:-.02em}
+.sum{color:var(--mute);margin:4px 0 20px;font-size:15px}
+.sum b{color:var(--warn);font-weight:600}
+.row{display:flex;flex-wrap:wrap;gap:12px}
+.box{width:56px;height:56px;border-radius:14px;border:2px solid var(--line);background:transparent;display:grid;place-items:center;font-size:26px;color:transparent;transition:background .15s,border-color .15s,transform .1s}
+.box:active{transform:scale(.94)}
+.box.on{background:var(--acc);border-color:var(--acc);color:var(--accink)}
+.box:focus-visible{outline:3px solid var(--acc);outline-offset:3px}
+.stats{display:flex;gap:10px;margin:16px 0}
+.stat{flex:1;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.stat b{display:block;font-size:22px}
+.stat span{color:var(--mute);font-size:13px}
+.hist{display:flex;flex-direction:column;gap:2px}
+.h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 4px;border-bottom:1px solid var(--line)}
+.h .d{font-size:14px;color:var(--mute);min-width:64px}
+.h .r{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+.sm{width:26px;height:26px;border-radius:8px;border:2px solid var(--line);background:transparent;font-size:14px;color:transparent;display:grid;place-items:center}
+.sm.on{background:var(--acc);border-color:var(--acc);color:var(--accink)}
+.sm:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+</style>
+</head>
+<body>
+<main>
+<header><h1>DSA daily</h1><div class="tr"><span id="total" title="Total solved">✓ 0</span><button id="theme" aria-label="Toggle theme">◐</button></div></header>
+<section class="today" id="today"></section>
+<div class="stats" id="stats"></div>
+<div class="hist" id="hist"></div>
+</main>
+<script>
+const KEY="dsa-tracker-v1",BASE=2;
+let st={start:null,done:{}};
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.start)st=s}catch(e){}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}}
+const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const parse=s=>{const [y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)};
+function days(){
+  const out=[],end=parse(iso(new Date())),cur=parse(st.start);let carry=0;
+  while(cur<=end){
+    const k=iso(cur),target=BASE+carry,solved=Math.min(st.done[k]||0,target);
+    out.push({k,date:new Date(cur),carry,target,solved});
+    carry=target-solved;cur.setDate(cur.getDate()+1);
+  }
+  return out;
+}
+function toggle(k,i,target){
+  const c=Math.min(st.done[k]||0,target);
+  st.done[k]=i<c?c-1:c+1;save();render();
+}
+function boxes(day,cls){
+  const wrap=document.createElement("div");wrap.className=cls==="box"?"row":"r";
+  for(let i=0;i<day.target;i++){
+    const b=document.createElement("button");
+    b.className=cls+(i<day.solved?" on":"");b.textContent="✓";
+    b.setAttribute("aria-label","Problem "+(i+1));
+    b.onclick=()=>toggle(day.k,i,day.target);wrap.appendChild(b);
+  }
+  return wrap;
+}
+function render(){
+  const all=days(),t=all[all.length-1];
+  const el=document.getElementById("today");el.innerHTML="";
+  const d=document.createElement("div");d.className="date";
+  d.textContent=t.date.toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"});
+  const s=document.createElement("div");s.className="sum";
+  s.innerHTML=t.carry?`${BASE} + <b>${t.carry}</b> = ${t.target}`:`${t.target}`;
+  el.append(d,s,boxes(t,"box"));
+  let total=0,streak=0;
+  all.forEach(x=>total+=x.solved);
+  document.getElementById("total").textContent="✓ "+total;
+  for(let i=all.length-1;i>=0;i--){const x=all[i];
+    if(x.solved>=x.target)streak++;else if(i===all.length-1)continue;else break;}
+  const pend=t.target-t.solved;
+  document.getElementById("stats").innerHTML=
+    `<div class="stat"><b>${total}</b><span>solved</span></div>
+     <div class="stat"><b>${pend}</b><span>pending</span></div>
+     <div class="stat"><b>${streak}</b><span>streak</span></div>`;
+  const h=document.getElementById("hist");h.innerHTML="";
+  all.slice(0,-1).reverse().slice(0,30).forEach(x=>{
+    const r=document.createElement("div");r.className="h";
+    const dd=document.createElement("span");dd.className="d";
+    dd.textContent=x.date.toLocaleDateString(undefined,{day:"numeric",month:"short"});
+    r.append(dd,boxes(x,"sm"));h.appendChild(r);
+  });
+}
+function theme(m){document.documentElement.dataset.theme=m;try{localStorage.setItem(KEY+"-theme",m)}catch(e){}}
+document.getElementById("theme").onclick=()=>{
+  const cur=document.documentElement.dataset.theme||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  theme(cur==="dark"?"light":"dark");
+};
+try{const m=localStorage.getItem(KEY+"-theme");if(m)document.documentElement.dataset.theme=m}catch(e){}
+load();
+if(!st.start){st.start=iso(new Date());save()}
+render();
+</script>
+</body>
+</html>
